@@ -112,7 +112,7 @@ class SecondSentence(Scene):
             r = Rectangle(width=t.get_width() + SMALL_BUFF, height = height, color=BLUE_E)
             r.align_to(t.get_right() + 0.5*SMALL_BUFF, direction=RIGHT)
             fb1.append(r)
-            n = TextMobject(str(i))
+            n = TextMobject(str(i + 1))
             n.next_to(r, direction=DOWN)
             fb1.append(n)
 
@@ -137,10 +137,10 @@ class SecondSentence(Scene):
         tokac.scale(0.75)
         tokac.next_to(tokab, direction=DOWN)
 
-        tok3 = BulletedList("split complex words", "add special tokens", "convert to vocabulary indices")
-        tok3.scale(0.75)
-        tok3.next_to(tok2, direction=DOWN, aligned_edge=ORIGIN)
-        tok3.shift((RIGHT + DOWN)* MED_SMALL_BUFF)
+        bull = BulletedList("split complex words", "add special tokens", "convert to vocabulary indices")
+        bull.scale(0.75)
+        bull.next_to(tok2, direction=DOWN, aligned_edge=LEFT)
+        bull.shift((RIGHT + DOWN)* MED_SMALL_BUFF)
 
         vg3 = VGroup(tokab, tokac)
 
@@ -150,14 +150,14 @@ class SecondSentence(Scene):
 
         self.wait(2)
 
-        self.play(FadeIn(tok3[0]))
+        self.play(FadeIn(bull[0]))
         # ipts2 = ["Mini"," \#van"," \#s"," park"," near"," the"," park"]
         # text_split = TextMobject(*ipts2)
         self.play(Transform(allt[0], mnvs))
 
         self.wait(2)
 
-        self.play(FadeIn(tok3[1]))
+        self.play(FadeIn(bull[1]))
 
         self.play(GrowFromCenter(CLS), GrowFromCenter(SEP))
 
@@ -167,4 +167,6 @@ class SecondSentence(Scene):
 
         self.wait()
 
-        self.play(FadeOut(vg), FadeOut(vg3))
+        self.play(FadeOut(vg))
+
+        self.play(FadeIn(bull[2]))

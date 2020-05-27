@@ -26,3 +26,5 @@ manim.egg-info/
 
 primes.py
 /media_dir.txt
+*.egg-*
+*.log
