@@ -7,6 +7,178 @@ import numpy as np
 SVG_IMAGE_DIR = "/Users/thomwolf/Library/Mobile Documents/com~apple~CloudDocs/Work/transformers/SVG/"
 
 
+vector1 = ["1.2", "0.7", "0.2", "-1.2", "-0.1", "1.8"]
+vector2 = ["0.3", "1.8", "0.2", "0.7", "-1.2", "-0.1"]
+vector3 = ["2.1", "-0.1", "0.7", "0.2", "-1.2", "1.8"]
+vector4 = ["-1.1", "0.2", "-1.2", "-0.1", "1.8", "0.7"]
+vector5 = ["-0.3", "-1.2", "-0.1", "1.8", "0.7", "0.2"]
+vector6 = ["1.4", "-1.2", "-0.1", "0.2", "1.8", "0.7"]
+
+
+def build_vector(vect, inner_color=PURPLE_E, outer_color=LIGHT_PINK, text_color=BLUE_A, rotate_and_scale=False):
+    vects = list(TextMobject(v, color=text_color) for v in vect)
+    rects = list(Rectangle(width=LARGE_BUFF, height=LARGE_BUFF,
+                        color=outer_color, fill_color=inner_color, fill_opacity=1.)
+                for _ in range(6))
+    vs = VGroup(*vects)
+    hs = VGroup(*rects)
+    hs.arrange(buff=0)
+    for h, v in zip(hs, vs):
+        v.move_to(h)
+    out_group = VGroup(hs, vs)
+    if rotate_and_scale:
+        out_group.scale(0.75)
+        out_group.rotate(-np.pi/2)
+    return out_group
+
+
+def build_vector_clean(vect, inner_color=PURPLE_E, outer_color=LIGHT_PINK, text_color=BLUE_A, rotate_and_scale=False):
+    rects = list(Rectangle(width=LARGE_BUFF, height=LARGE_BUFF,
+                        color=outer_color, fill_color=inner_color, fill_opacity=1.)
+                for _ in range(6))
+    texts = list(TextMobject(v, color=text_color) for v in vect)
+    r = VGroup(*rects)
+    r.arrange(buff=0)
+    out_group = []
+    for r, t in zip(rects, texts):
+        t.move_to(r)
+        out_group.append(VGroup(r, t))
+    out_group = VGroup(*out_group)
+    if rotate_and_scale:
+        out_group.scale(0.75)
+        out_group.rotate(-np.pi/2)
+    return out_group
+
+
+def create_mapping(voc1, voc2, dot_only_last=False, inner_color=PURPLE_E, outer_color=LIGHT_PINK, text_color=BLUE_A):
+    vocab = []
+    arr_and_dots = []
+    for txt, vec in zip(voc1, voc2):
+        arr = Arrow()
+        hs = build_vector(vec, inner_color=inner_color, outer_color=outer_color, text_color=text_color)
+        hs.scale(0.75)
+        if dot_only_last:
+            arr_and_dots += [arr]
+        else:
+            dots = TextMobject("...")
+            arr_and_dots += [arr, dots]
+        vg = VGroup(TextMobject(txt, fill_color=BLUE_D),
+                    arr,
+                    hs)
+        # dots.next_to(vg, direction=DOWN)
+        if dot_only_last:
+            vocab += [vg]
+        else:
+            vocab += [vg, dots]
+    if dot_only_last:
+        dots = TextMobject("...")
+        vocab = vocab[:-1] + [dots, vocab[-1]]
+        arr_and_dots = arr_and_dots[:-1] + [dots, arr_and_dots[-1]]
+    else:
+        vocab = vocab[:-1]
+        arr_and_dots = arr_and_dots[:-1]
+
+    arr_and_dots = VGroup(*arr_and_dots)
+    arr_and_dots.arrange(direction=DOWN,
+                            buff=(MED_LARGE_BUFF if dot_only_last else MED_SMALL_BUFF))
+
+    for v in vocab:
+        if isinstance(v, TextMobject):
+            continue
+        else:
+            txt, arr, idx = v
+            txt.next_to(v[1], direction=LEFT)
+            idx.next_to(v[1], direction=RIGHT)
+
+    return arr_and_dots, vocab
+
+
+def create_init_target(vocab, indices):
+    vector_init = []
+    vector_target = []
+    for v in vocab:
+        if isinstance(v, TextMobject):
+            continue
+        else:
+            txt, arr, vect = v
+            print(txt.tex_string)
+            if isinstance(indices, TextMobject):
+                target_idx = list(filter(lambda s: s[1] == txt.tex_string, enumerate(indices.tex_strings)))
+            else:
+                target_idx = list(filter(lambda s: s[1].tex_string == txt.tex_string, enumerate(indices)))
+            if len(target_idx) == 1:
+                idx_orr: Mobject = vect
+                idx_target = idx_orr.deepcopy()
+                idx_target.rotate(-np.pi/2)
+                idx_target.next_to(indices[target_idx[0][0]], direction=UP)
+                vector_init.append(idx_orr)
+                vector_target.append(idx_target)
+            elif len(target_idx) == 2:
+                idx_orr = vect
+                idx_target = idx_orr.deepcopy()
+                idx_target.rotate(-np.pi/2)
+                idx_target.next_to(indices[target_idx[0][0]], direction=UP)
+
+                idx_orr_2 = vect.deepcopy()
+                idx_target_2 = idx_orr_2.deepcopy()
+                idx_target_2.rotate(-np.pi/2)
+                idx_target_2.next_to(indices[target_idx[1][0]], direction=UP)
+
+                vector_init += [idx_orr, idx_orr_2]
+                vector_target += [idx_target, idx_target_2]
+            else:
+                print("nothing for", txt.tex_string)
+                continue
+
+    vector_init = VGroup(*vector_init)
+    vector_target = VGroup(*vector_target)
+    return vector_init, vector_target
+
+
+def new_vector_color(vector_init, fill_color=GOLD_D, stroke_color=GREY_BROWN, text_color=BLACK):
+    vector_final = vector_init.deepcopy()
+    for v in vector_final:
+        for r in v[0]:
+            assert isinstance(r, Rectangle)
+            r.set_fill(fill_color)
+            r.set_stroke(stroke_color)
+        for r in v[1]:
+            assert isinstance(r, TexMobject)
+            r.set_fill(text_color)
+    vector_final.center()
+    vector_final.shift(2*RIGHT)
+    return vector_final
+
+
+def new_vector_color_clean(vector_init, fill_color=GOLD_D, stroke_color=GREY_BROWN, text_color=BLACK):
+    vector_final = vector_init.deepcopy()
+    for v in vector_final:
+        for r in v:
+            assert isinstance(r[0], Rectangle)
+            r[0].set_fill(fill_color)
+            r[0].set_stroke(stroke_color)
+            assert isinstance(r[1], TexMobject)
+            r[1].set_fill(text_color)
+    vector_final.center()
+    vector_final.shift(2*RIGHT)
+    return vector_final
+
+
+def vector_to_one(vector_init):
+    vector = vector_init.deepcopy()
+    first, rest = [], []
+    for v in vector:
+        for r1, r2 in zip(v[0].submobjects, v[0].submobjects[1:]):
+            assert isinstance(r1, Rectangle)
+            r2.move_to(r1)
+        for r1, r2 in zip(v[1].submobjects, v[1].submobjects[1:]):
+            assert isinstance(r1, TexMobject)
+            r2.move_to(r1)
+        first.append(VGroup(v[0][0], v[1][0]))
+        rest.append(VGroup(VGroup(*v[0][1:]), VGroup(*v[1][1:])))
+    return VGroup(*first), VGroup(*rest)
+
+
 class Park(SVGMobject):
     CONFIG = {
         "color" : BLUE_E,
@@ -323,6 +495,11 @@ class ForthSentence(Scene):
         tok2 = TextMobject("2. Transformer")
         tok2.to_corner(LEFT+UP)
 
+        bull2 = BulletedList("Embeddings")
+        bull2.scale(0.75)
+        bull2.next_to(tok2, direction=DOWN, aligned_edge=LEFT)
+        bull2.shift((RIGHT + DOWN)* MED_SMALL_BUFF)
+
         bull = BulletedList("word embeddings", "position embeddings", "first hidden-state")
         bull.scale(0.75)
         bull.next_to(tok2, direction=DOWN, aligned_edge=LEFT)
@@ -357,109 +534,7 @@ class ForthSentence(Scene):
         for m, i in zip(model_inputs, fbi):
             i.next_to(m, direction=DOWN)
 
-        vector1 = ["1.2", "0.7", "0.2", "-1.2", "-0.1", "1.8"]
-        vector2 = ["0.3", "1.8", "0.2", "0.7", "-1.2", "-0.1"]
-        vector3 = ["2.1", "-0.1", "0.7", "0.2", "-1.2", "1.8"]
-        vector4 = ["-1.1", "0.2", "-1.2", "-0.1", "1.8", "0.7"]
-        vector5 = ["-0.3", "-1.2", "-0.1", "1.8", "0.7", "0.2"]
-        vector6 = ["1.4", "-1.2", "-0.1", "0.2", "1.8", "0.7"]
-
-        def build_vector(vect, inner_color=PURPLE_E, outer_color=LIGHT_PINK, text_color=BLUE_A):
-            vects = list(TextMobject(v, color=text_color) for v in vect)
-            rects = list(Rectangle(width=LARGE_BUFF, height=LARGE_BUFF,
-                                color=outer_color, fill_color=inner_color, fill_opacity=1.)
-                        for _ in range(6))
-            vs = VGroup(*vects)
-            hs = VGroup(*rects)
-            hs.arrange(buff=0)
-            for h, v in zip(hs, vs):
-                v.move_to(h)
-            return VGroup(hs, vs)
-
         hsa = build_vector(vector1)
-
-        def create_mapping(voc1, voc2, dot_only_last=False, inner_color=PURPLE_E, outer_color=LIGHT_PINK, text_color=BLUE_A):
-            vocab = []
-            arr_and_dots = []
-            for txt, vec in zip(voc1, voc2):
-                arr = Arrow()
-                hs = build_vector(vec, inner_color=inner_color, outer_color=outer_color, text_color=text_color)
-                hs.scale(0.75)
-                if dot_only_last:
-                    arr_and_dots += [arr]
-                else:
-                    dots = TextMobject("...")
-                    arr_and_dots += [arr, dots]
-                vg = VGroup(TextMobject(txt, fill_color=BLUE_D),
-                            arr,
-                            hs)
-                # dots.next_to(vg, direction=DOWN)
-                if dot_only_last:
-                    vocab += [vg]
-                else:
-                    vocab += [vg, dots]
-            if dot_only_last:
-                dots = TextMobject("...")
-                vocab = vocab[:-1] + [dots, vocab[-1]]
-                arr_and_dots = arr_and_dots[:-1] + [dots, arr_and_dots[-1]]
-            else:
-                vocab = vocab[:-1]
-                arr_and_dots = arr_and_dots[:-1]
-
-            arr_and_dots = VGroup(*arr_and_dots)
-            arr_and_dots.arrange(direction=DOWN,
-                                 buff=(MED_LARGE_BUFF if dot_only_last else MED_SMALL_BUFF))
-
-            for v in vocab:
-                if isinstance(v, TextMobject):
-                    continue
-                else:
-                    txt, arr, idx = v
-                    txt.next_to(v[1], direction=LEFT)
-                    idx.next_to(v[1], direction=RIGHT)
-
-            return arr_and_dots, vocab
-
-        def create_init_target(vocab, indices):
-            vector_init = []
-            vector_target = []
-            for v in vocab:
-                if isinstance(v, TextMobject):
-                    continue
-                else:
-                    txt, arr, vect = v
-                    print(txt.tex_string)
-                    if isinstance(indices, TextMobject):
-                        target_idx = list(filter(lambda s: s[1] == txt.tex_string, enumerate(indices.tex_strings)))
-                    else:
-                        target_idx = list(filter(lambda s: s[1].tex_string == txt.tex_string, enumerate(indices)))
-                    if len(target_idx) == 1:
-                        idx_orr: Mobject = vect
-                        idx_target = idx_orr.deepcopy()
-                        idx_target.rotate(-np.pi/2)
-                        idx_target.next_to(indices[target_idx[0][0]], direction=UP)
-                        vector_init.append(idx_orr)
-                        vector_target.append(idx_target)
-                    elif len(target_idx) == 2:
-                        idx_orr = vect
-                        idx_target = idx_orr.deepcopy()
-                        idx_target.rotate(-np.pi/2)
-                        idx_target.next_to(indices[target_idx[0][0]], direction=UP)
-
-                        idx_orr_2 = vect.deepcopy()
-                        idx_target_2 = idx_orr_2.deepcopy()
-                        idx_target_2.rotate(-np.pi/2)
-                        idx_target_2.next_to(indices[target_idx[1][0]], direction=UP)
-
-                        vector_init += [idx_orr, idx_orr_2]
-                        vector_target += [idx_target, idx_target_2]
-                    else:
-                        print("nothing for", txt.tex_string)
-                        continue
-
-            vector_init = VGroup(*vector_init)
-            vector_target = VGroup(*vector_target)
-            return vector_init, vector_target
 
         voc1 = ["0", "101", "102", "1103", "1116", "1485", "2493", "5242", "14393", "28995"]
         voc2 = [vector1, vector5, vector2, vector3, vector4, vector5, vector6, vector3, vector2, vector1]
@@ -600,22 +675,8 @@ class ForthSentence(Scene):
 
         self.play(FadeIn(bull[2]))
 
-        def make_final(vector_init):
-            vector_final = vector_init.deepcopy()
-            for v in vector_final:
-                for r in v[0]:
-                    assert isinstance(r, Rectangle)
-                    r.set_fill(GOLD_D)
-                    r.set_stroke(GREY_BROWN)
-                for r in v[1]:
-                    assert isinstance(r, TexMobject)
-                    r.set_fill(BLACK)
-            vector_final.center()
-            vector_final.shift(2*RIGHT)
-            return vector_final
-
-        vector_final = make_final(vector_init)
-        vector_final_2 = make_final(pvector_init)
+        vector_final = new_vector_color(vector_init)
+        vector_final_2 = new_vector_color(pvector_init)
 
         self.play(FadeOut(plus),
                   FadeOut(wi[0]),
@@ -624,10 +685,218 @@ class ForthSentence(Scene):
                   ApplyMethod(pvector_init.shift, -pvector_init.get_center() + 2*RIGHT),
                   )
         
-        self.play(
-                  Transform(wi[1], vector_final),
+        self.play(Transform(wi[1], vector_final),
                   Transform(pvector_init, vector_final_2))
 
         self.wait(2)
 
         self.remove(wi[1])
+
+        self.play(FadeOutAndShift(bull[1], direction=UP),
+                  FadeOutAndShift(bull[2], direction=UP),
+                  Transform(bull[0], bull2[0]))
+
+        self.wait(2)
+
+        firsts = VGroup(*([v for v in pvector_init[:4]]))
+        firsts_targets = firsts.deepcopy()
+        firsts_targets.arrange(buff=LARGE_BUFF)
+        lasts = VGroup(*([v for v in pvector_init[4:]]))
+
+        self.play(FadeOut(lasts),
+                  Transform(firsts, firsts_targets))
+
+        self.wait(2)
+
+
+class FifthSentence(Scene):
+    #Adding text on the screen
+    def construct(self):
+        tok1 = Title("2. Transformer")
+
+        tok2 = TextMobject("2. Transformer")
+        tok2.to_corner(LEFT+UP)
+
+        bull2 = BulletedList("Embeddings")
+        bull2.scale(0.75)
+        bull2.next_to(tok2, direction=DOWN, aligned_edge=LEFT)
+        bull2.shift((RIGHT + DOWN)* MED_SMALL_BUFF)
+
+        voc2 = [vector1, vector5, vector2, vector3, vector4, vector5, vector6, vector3, vector2, vector1]
+
+        vects = VGroup(*([build_vector(v, rotate_and_scale=True) for v in voc2[:4]]))
+        vects = new_vector_color(vects)
+        vects.scale(0.6)
+        vects.arrange(buff=LARGE_BUFF)
+
+        vectsm = VGroup(*([build_vector(v, rotate_and_scale=True) for v in voc2[1:5]]))
+        vectsm = new_vector_color(vectsm, fill_color=TEAL_B)
+        vectsm.scale(0.6)
+        vectsm.arrange(buff=LARGE_BUFF)
+
+        vectsst = VGroup(*([build_vector(v, rotate_and_scale=True) for v in voc2[3:7]]))
+        vectsst = new_vector_color(vectsst, fill_color=BLUE_C)
+        vectsst.scale(0.6)
+        vectsst.arrange(buff=LARGE_BUFF)
+
+        vects2 = vects.deepcopy()
+        mean = new_vector_color(vects, fill_color=GREEN_E)
+        mean, _ = vector_to_one(mean)
+        mean.arrange(buff=LARGE_BUFF)
+        mean.shift(2*UP)
+        mean_txt = TextMobject("Mean value")
+        mean_txt.scale(0.6)
+        mean_txt.next_to(mean)
+
+        vects3 = vects.deepcopy()
+        std = new_vector_color(vects, fill_color=PURPLE_E)
+        std, _ = vector_to_one(std)
+        std.arrange(buff=LARGE_BUFF)
+        std.shift(2*DOWN + DOWN*MED_LARGE_BUFF)
+        std_txt = TextMobject("Standard deviation")
+        std_txt.scale(0.6)
+        std_txt.next_to(std)
+
+        self.add(tok2, bull2, vects)
+
+        self.play(Transform(vects2, mean))
+
+        self.play(Write(mean_txt))
+
+        self.play(Transform(vects3, std))
+
+        self.play(Write(std_txt))
+
+        self.wait(2)
+
+        minus = list(TexMobject("-") for _ in range(4))
+        for p, v in zip(minus, vects):
+            p.next_to(v, direction=UP)
+            p.shift(DOWN*SMALL_BUFF/2)
+        minus = VGroup(*minus)
+
+        div = list(TexMobject("1/\sqrt{}") for _ in range(4))
+        for p, v in zip(div, vects):
+            p.next_to(v, direction=DOWN)
+            p.shift(UP*SMALL_BUFF)
+            p.scale(0.6)
+        div = VGroup(*div)
+
+        self.play(ShowCreation(minus), ShowCreation(div))
+
+        def to_vect(single):
+            singles = []
+            for m in single:
+                mv0 = VGroup(*[m[0].deepcopy() for _ in range(6)])
+                mv0.arrange(buff=0, direction=DOWN, center=False)
+                mv1 = VGroup(*[m[1].deepcopy().move_to(mv0[i]) for i in range(6)])
+                # mv1.arrange(buff=0, direction=DOWN, center=False)
+                mv = VGroup(mv0, mv1)
+                singles.append(mv)
+            singles = VGroup(*singles)
+            for m, v in zip(singles, vects):
+                m.move_to(v)
+            singles.shift(RIGHT*MED_LARGE_BUFF)
+            return singles
+
+        means = to_vect(mean)
+        stds = to_vect(std)
+
+        self.play(FadeOut(mean_txt),
+                  ApplyMethod(vects2.shift, RIGHT*MED_LARGE_BUFF),
+                  Transform(vects2, means))
+
+        self.play(FadeOut(minus),
+                  Transform(vects2, vectsm))
+
+        self.play(FadeOut(std_txt),
+                  ApplyMethod(vects3.shift, RIGHT*MED_LARGE_BUFF),
+                  Transform(vects3, stds))
+
+        self.play(FadeOut(div),
+                  Transform(vects3, vectsst))
+
+
+class SixthSentence(Scene):
+    #Adding text on the screen
+    def construct(self):
+        tok1 = Title("2. Transformer")
+
+        tok2 = TextMobject("2. Transformer")
+        tok2.to_corner(LEFT+UP)
+
+        bull2 = BulletedList("Embeddings")
+        bull2.scale(0.75)
+        bull2.next_to(tok2, direction=DOWN, aligned_edge=LEFT)
+        bull2.shift((RIGHT + DOWN)* MED_SMALL_BUFF)
+
+        voc2 = [vector1, vector5, vector2, vector3, vector4, vector5, vector6, vector3, vector2, vector1]
+
+        vects = VGroup(*([build_vector_clean(v, rotate_and_scale=True) for v in voc2[3:7]]))
+        vects = new_vector_color_clean(vects, fill_color=BLUE_C)
+        vects.scale(0.6)
+        vects.arrange(buff=LARGE_BUFF)
+
+        vectsm = VGroup(*([build_vector_clean(v, rotate_and_scale=True) for v in voc2[1:5]]))
+        vectsm = new_vector_color_clean(vectsm, fill_color=TEAL_B)
+        vectsm.scale(0.6)
+        vectsm.arrange(buff=LARGE_BUFF)
+
+        lns = build_vector_clean(vector1, rotate_and_scale=True, inner_color=PURPLE_E, outer_color=GREY_BROWN, text_color=BLACK)
+        lns.scale(0.6)
+        lns.shift(5*RIGHT)
+        lns = VGroup(*[lns.deepcopy() for _ in range(4)])
+        lns_txt = TextMobject("Scale").scale(0.6)
+        lns_txt.next_to(lns, direction=UP)
+
+        all_lns = lns.deepcopy()
+        for i, l in enumerate(all_lns):
+            l.move_to(vects[i]).shift(RIGHT * LARGE_BUFF)
+
+        lnm = build_vector_clean(vector1, rotate_and_scale=True, inner_color=GREEN_E, outer_color=GREY_BROWN, text_color=BLACK)
+        lnm.scale(0.6)
+        lnm.shift(4*RIGHT)
+        lnm = VGroup(*[lnm.deepcopy() for _ in range(4)])
+        lnm_txt = TextMobject("Offset").scale(0.6)
+        lnm_txt.next_to(lnm, direction=UP)
+
+        self.add(tok2, bull2, vects)
+
+        self.play(ShowCreation(lnm), Write(lnm_txt))
+        self.play(ShowCreation(lns), Write(lns_txt))
+
+        times = list(TexMobject("*") for _ in range(4))
+        for p, v in zip(times, vects):
+            p.next_to(v, direction=RIGHT)
+        times = VGroup(*times)
+
+        self.play(Transform(lns, all_lns),
+                  FadeOut(lns_txt))
+        self.play(ShowCreation(times))
+
+        self.play(FadeOut(times),
+                  ApplyMethod(lns.shift, LEFT * LARGE_BUFF),
+                  Transform(lns, vectsm))
+        self.remove(vects)
+
+        vectsst = VGroup(*([build_vector_clean(v, rotate_and_scale=True) for v in voc2[3:7]]))
+        vectsst = new_vector_color_clean(vectsst, fill_color=BLUE_C)
+        vectsst.scale(0.6)
+        vectsst.arrange(buff=LARGE_BUFF)
+
+        all_lnm = lnm.deepcopy()
+        for i, l in enumerate(all_lnm):
+            l.move_to(vects[i]).shift(RIGHT * LARGE_BUFF)
+
+        plus = list(TexMobject("+") for _ in range(4))
+        for p, v in zip(plus, vectsm):
+            p.next_to(v, direction=RIGHT, buff=SMALL_BUFF)
+        plus = VGroup(*plus)
+
+        self.play(Transform(lnm, all_lnm),
+                  FadeOut(lnm_txt))
+        self.play(ShowCreation(plus))
+
+        self.play(FadeOut(plus),
+                  ApplyMethod(lnm.shift, LEFT * LARGE_BUFF),
+                  Transform(lnm, vectsst))
